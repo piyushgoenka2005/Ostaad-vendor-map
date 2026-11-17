@@ -92,15 +92,41 @@ async function queryCloudflareD1<T>(sql: string): Promise<T[]> {
   return firstResult.results;
 }
 
+function toSafeString(value: unknown): string {
+  if (value === null || value === undefined) return "";
+  return String(value).trim();
+}
+
+function normalizeCreatedAt(value: unknown): string {
+  if (value === null || value === undefined) return "";
+  if (typeof value === "number" && Number.isFinite(value)) {
+    // Handle Unix seconds (< 1e12) vs Unix milliseconds (>= 1e12)
+    const ms = value < 1e12 ? value * 1000 : value;
+    const d = new Date(ms);
+    return Number.isNaN(d.getTime()) ? String(value) : d.toISOString();
+  }
+  const str = String(value).trim();
+  if (!str) return "";
+  if (/^\d{10,13}$/.test(str)) {
+    const num = Number(str);
+    const ms = num < 1e12 ? num * 1000 : num;
+    const d = new Date(ms);
+    return Number.isNaN(d.getTime()) ? str : d.toISOString();
+  }
+  return str;
+}
+
 function normalizeVerificationStatus(
-  status: string | null | undefined,
-  isVerified: number | boolean | null | undefined
+  status: string | number | null | undefined,
+  isVerified: number | boolean | string | null | undefined
 ): VerificationStatus {
-  const lowered = (status ?? "").trim().toLowerCase();
+  const lowered = toSafeString(status).toLowerCase();
   if (lowered === "verified" || lowered === "approved") return "verified";
   if (lowered === "rejected" || lowered === "declined") return "rejected";
   if (lowered === "pending") return "pending";
-  if (isVerified === 1 || isVerified === true) return "verified";
+  if (isVerified === 1 || isVerified === true || isVerified === "1" || isVerified === "true") {
+    return "verified";
+  }
   return "pending";
 }
 
@@ -114,13 +140,24 @@ async function hydrateVendors(
   let nominatimCallsUsed = 0;
 
   for (const row of rows) {
-    const categories = parseCategoriesJson(row.categoriesJson);
+    const rawCategories =
+      typeof row.categoriesJson === "string"
+        ? row.categoriesJson
+        : row.categoriesJson != null
+          ? JSON.stringify(row.categoriesJson)
+          : null;
+    const categories = parseCategoriesJson(rawCategories);
     const primaryCategory = categories[0] ?? "General Supply";
     const verificationStatus = normalizeVerificationStatus(row.verificationStatus, row.isVerified);
-    const isVerified = verificationStatus === "verified" || row.isVerified === 1 || row.isVerified === true;
+    const isVerified =
+      verificationStatus === "verified" ||
+      row.isVerified === 1 ||
+      row.isVerified === true ||
+      row.isVerified === "1" ||
+      row.isVerified === "true";
 
-    const address = (row.address ?? "").trim();
-    const city = (row.city ?? "").trim() || "Kolkata";
+    const address = toSafeString(row.address);
+    const city = toSafeString(row.city) || "Kolkata";
     const canUseNominatim =
       (options?.allowNominatim ?? true) && nominatimCallsUsed < MAX_NOMINATIM_PER_REQUEST;
 
@@ -136,20 +173,20 @@ async function hydrateVendors(
     const parsedProductCount = Number(row.productCount ?? 0);
 
     hydrated.push({
-      id: String(row.id),
-      businessName: (row.businessName ?? "").trim() || "Unnamed Vendor",
-      ownerName: (row.ownerName ?? "").trim() || "—",
-      email: (row.email ?? "").trim(),
-      phone: (row.phone ?? "").trim(),
-      gstin: (row.gstin ?? "").trim(),
+      id: toSafeString(row.id) || `vendor-${hydrated.length + 1}`,
+      businessName: toSafeString(row.businessName) || "Unnamed Vendor",
+      ownerName: toSafeString(row.ownerName) || "—",
+      email: toSafeString(row.email),
+      phone: toSafeString(row.phone),
+      gstin: toSafeString(row.gstin),
       city,
       address: address || city,
       categories: categories.length > 0 ? categories : ["General Supply"],
       primaryCategory,
-      description: (row.description ?? "").trim(),
+      description: toSafeString(row.description),
       verificationStatus,
       isVerified,
-      createdAt: (row.createdAt ?? "").trim(),
+      createdAt: normalizeCreatedAt(row.createdAt),
       productCount: Number.isFinite(parsedProductCount) ? parsedProductCount : 0,
       lat: geo.lat,
       lng: geo.lng,

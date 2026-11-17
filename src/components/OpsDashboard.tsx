@@ -26,6 +26,7 @@ const VendorMap = dynamic(() => import("@/components/VendorMap"), {
 interface OpsDashboardProps {
   initialData: VendorsApiResponse | null;
   initialError?: string | null;
+  d1Configured: boolean;
   devMode: boolean;
 }
 
@@ -38,15 +39,22 @@ const EMPTY_STATS: VendorStats = {
   coveredHubs: 0,
 };
 
-export function OpsDashboard({ initialData, initialError, devMode }: OpsDashboardProps) {
+export function OpsDashboard({
+  initialData,
+  initialError,
+  d1Configured,
+  devMode,
+}: OpsDashboardProps) {
   const [vendors, setVendors] = useState<VendorRecord[]>(initialData?.vendors ?? []);
   const [stats, setStats] = useState<VendorStats>(initialData?.stats ?? EMPTY_STATS);
-  const [mode, setMode] = useState<"live" | "demo">(initialData?.mode ?? "demo");
+  const [mode, setMode] = useState<"live" | "demo">(
+    initialData?.mode ?? (d1Configured ? "live" : "demo")
+  );
   const [syncedAt, setSyncedAt] = useState<string | null>(initialData?.syncedAt ?? null);
   const [bannerWarning, setBannerWarning] = useState<string | null>(
-    initialData?.warning ?? initialError ?? null
+    initialData?.warning ?? null
   );
-  const [syncError, setSyncError] = useState<string | null>(null);
+  const [syncError, setSyncError] = useState<string | null>(initialError ?? null);
   const [isSyncing, setIsSyncing] = useState(false);
 
   // Interactive filters & UI state

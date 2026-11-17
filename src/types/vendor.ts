@@ -3,19 +3,19 @@ export type VerificationStatus = "verified" | "pending" | "rejected";
 export type GeocodeAccuracy = "exact" | "locality" | "approximate";
 
 export interface RawVendorRow {
-  id: string;
-  businessName: string | null;
-  ownerName: string | null;
-  email: string | null;
-  phone: string | null;
-  gstin: string | null;
-  city: string | null;
-  address: string | null;
+  id: string | number;
+  businessName: string | number | null;
+  ownerName: string | number | null;
+  email: string | number | null;
+  phone: string | number | null;
+  gstin: string | number | null;
+  city: string | number | null;
+  address: string | number | null;
   categoriesJson: string | null;
-  description: string | null;
-  verificationStatus: string | null;
-  isVerified: number | boolean | null;
-  createdAt: string | null;
+  description: string | number | null;
+  verificationStatus: string | number | null;
+  isVerified: number | boolean | string | null;
+  createdAt: string | number | null;
   productCount: number | string | null;
 }
 

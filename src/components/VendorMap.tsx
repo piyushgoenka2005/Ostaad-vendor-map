@@ -20,21 +20,31 @@ interface VendorMapProps {
 const KOLKATA_CENTER: [number, number] = [22.555, 88.385];
 const DEFAULT_ZOOM = 12;
 
-type TileStyle = "voyager" | "osm";
+type TileStyle = "osm" | "esriStreet" | "esriLight";
 
-const TILE_LAYERS: Record<TileStyle, { url: string; attribution: string; label: string }> = {
-  voyager: {
-    url: "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png",
-    attribution:
-      '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>',
-    label: "Voyager",
-  },
+const TILE_LAYERS: Record<
+  TileStyle,
+  { url: string; attribution: string; label: string; subdomains?: string }
+> = {
   osm: {
-    url: "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
-    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-    label: "OSM",
+    url: "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
+    attribution:
+      '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+    label: "OpenStreetMap",
+  },
+  esriStreet: {
+    url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}",
+    attribution: "Tiles &copy; Esri — OpenStreetMap &amp; GIS Community",
+    label: "Esri Street",
+  },
+  esriLight: {
+    url: "https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}",
+    attribution: "Tiles &copy; Esri — Light Gray Canvas",
+    label: "Light Canvas",
   },
 };
+
+const TILE_ORDER: TileStyle[] = ["osm", "esriStreet", "esriLight"];
 
 function createPinIcon(color: string, isVerified: boolean, isSelected: boolean): L.DivIcon {
   const size = isSelected ? 40 : 32;
@@ -122,7 +132,7 @@ export default function VendorMap({
   const circlesLayerRef = useRef<L.LayerGroup | null>(null);
   const hasFittedInitialRef = useRef(false);
 
-  const [tileStyle, setTileStyle] = useState<TileStyle>("voyager");
+  const [tileStyle, setTileStyle] = useState<TileStyle>("osm");
   const [legendOpen, setLegendOpen] = useState(true);
 
   const legendEntries = useMemo(() => {
@@ -152,10 +162,9 @@ export default function VendorMap({
 
     L.control.zoom({ position: "bottomright" }).addTo(map);
 
-    const tile = L.tileLayer(TILE_LAYERS.voyager.url, {
-      attribution: TILE_LAYERS.voyager.attribution,
+    const tile = L.tileLayer(TILE_LAYERS.osm.url, {
+      attribution: TILE_LAYERS.osm.attribution,
       maxZoom: 19,
-      subdomains: "abcd",
     }).addTo(map);
 
     const circlesLayer = L.layerGroup().addTo(map);
@@ -194,7 +203,6 @@ export default function VendorMap({
     tileLayerRef.current = L.tileLayer(cfg.url, {
       attribution: cfg.attribution,
       maxZoom: 19,
-      subdomains: tileStyle === "voyager" ? "abcd" : "abc",
     }).addTo(map);
   }, [tileStyle]);
 
@@ -316,8 +324,13 @@ export default function VendorMap({
 
         <button
           type="button"
-          onClick={() => setTileStyle((prev) => (prev === "voyager" ? "osm" : "voyager"))}
-          title="Switch map tile style between CartoDB Voyager and OpenStreetMap"
+          onClick={() =>
+            setTileStyle((prev) => {
+              const idx = TILE_ORDER.indexOf(prev);
+              return TILE_ORDER[(idx + 1) % TILE_ORDER.length];
+            })
+          }
+          title="Switch map basemap (OpenStreetMap / Esri Street / Light Canvas)"
           className="pointer-events-auto inline-flex items-center gap-1.5 rounded-xl border border-[#EAE4DE] bg-white/95 px-3 py-2 text-xs font-medium text-[#23384F] shadow-md backdrop-blur-xs transition hover:border-[#9B4E27]/50 hover:text-[#9B4E27]"
         >
           <Layers className="h-3.5 w-3.5 text-[#23384F]/70" />

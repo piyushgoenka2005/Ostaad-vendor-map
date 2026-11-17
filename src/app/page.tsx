@@ -1,5 +1,5 @@
 import { getAuthStatus } from "@/lib/auth";
-import { getLiveOrDemoVendors } from "@/lib/d1";
+import { getLiveOrDemoVendors, isD1Configured } from "@/lib/d1";
 import { LoginGate } from "@/components/LoginGate";
 import { OpsDashboard } from "@/components/OpsDashboard";
 import type { VendorsApiResponse } from "@/types/vendor";
@@ -36,6 +36,7 @@ export default async function HomePage() {
     <OpsDashboard
       initialData={initialData}
       initialError={initialError}
+      d1Configured={isD1Configured()}
       devMode={auth.devMode}
     />
   );
